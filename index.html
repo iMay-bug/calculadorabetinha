@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Betinha v12</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <style>
+        :root {
+            --light-bg-start: #e0eafc; --light-bg-end: #cfdef3;
+            --light-surface: rgba(255, 255, 255, 0.45); --light-text: #1a202c; --light-text-secondary: #4a5568; --light-border: rgba(0, 0, 0, 0.07);
+            
+            --dark-bg-start: #1a202c; --dark-bg-end: #2d3748;
+            --dark-surface: rgba(26, 32, 44, 0.45); --dark-text: #e2e8f0; --dark-text-secondary: #a0aec0; --dark-border: rgba(255, 255, 255, 0.07);
+            
+            --primary-color: #3182ce; --primary-glow: rgba(49, 130, 206, 0.5);
+            --success-color: #38a169; --warning-color: #dd6b20; --danger-color: #e53e3e;
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15); --border-radius: 20px;
+        }
+        [data-theme="dark"] {
+            --light-bg-start: var(--dark-bg-start); --light-bg-end: var(--dark-bg-end);
+            --light-surface: var(--dark-surface); --light-text: var(--dark-text);
+            --light-text-secondary: var(--dark-text-secondary); --light-border: var(--dark-border);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif; color: var(--light-text); 
+            display: flex; justify-content: center; align-items: flex-start;
+            padding: 20px; min-height: 100vh;
+            background: linear-gradient(135deg, var(--light-bg-start), var(--light-bg-end));
+            transition: background 0.5s;
+            /* overflow: hidden; foi removido para permitir a rolagem */
+        }
+        .aurora-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+        .aurora-bg div { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.3; }
+        .aurora-1 { width: 400px; height: 400px; background: var(--primary-color); top: 10%; left: 10%; animation: move 20s infinite alternate; }
+        .aurora-2 { width: 300px; height: 300px; background: var(--success-color); bottom: 10%; right: 10%; animation: move 25s infinite alternate-reverse; }
+        .aurora-3 { width: 200px; height: 200px; background: var(--warning-color); top: 20%; right: 30%; animation: move 15s infinite alternate; }
+        @keyframes move { from { transform: translate(0, 0) rotate(0deg); } to { transform: translate(100px, 50px) rotate(45deg); } }
+
+        .main-container { display: flex; gap: 20px; width: 100%; max-width: 1400px; align-items: flex-start; }
+        .calculator-wrapper { width: 100%; max-width: 750px; flex-shrink: 0; }
+        .calculator-container, .history-container {
+            background: var(--light-surface); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            padding: 30px; border-radius: var(--border-radius); box-shadow: var(--shadow); border: 1px solid var(--light-border);
+        }
+        .history-container { height: calc(100vh - 40px); max-height: 950px; overflow-y: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        h1 { font-size: 2.4em; font-weight: 700; }
+        h2 { font-size: 1.8em; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--light-border); }
+        h3 { font-size: 1.3em; margin-bottom: 15px; color: var(--primary-color); }
+        #theme-toggle {
+            background: var(--light-surface); border: 1px solid var(--light-border); border-radius: 50%; width: 48px; height: 48px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.5em; color: var(--light-text-secondary); transition: transform 0.3s ease-in-out;
+        }
+        #theme-toggle:hover { transform: scale(1.1) rotate(20deg); }
+        .tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--light-border); margin-bottom: 25px; }
+        .tab-button {
+            padding: 14px 22px; cursor: pointer; background: none; border: none; font-size: 1.05em; font-weight: 600;
+            color: var(--light-text-secondary); border-bottom: 3px solid transparent; transition: all 0.3s;
+        }
+        .tab-button.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        .tab-content { display: none; animation: fadeIn 0.6s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .result-box {
+            background-color: rgba(0,0,0,0.05); color: var(--light-text); padding: 25px; border-radius: 12px; min-height: 80px;
+            font-family: 'Courier New', Courier, monospace; font-size: 2.2em; font-weight: 600;
+            word-wrap: break-word; text-align: right; position: relative; margin-bottom: 20px;
+        }
+        #result-output-container { position: relative; }
+        #copy-result {
+            position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 1.2em;
+            color: var(--light-text-secondary); cursor: pointer; padding: 5px; border-radius: 50%; width: 35px; height: 35px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #copy-result:hover { background-color: rgba(0,0,0,0.1); }
+        .tooltip {
+            position: absolute; right: 45px; top: 12px; background-color: #333; color: white;
+            padding: 5px 10px; border-radius: 4px; font-size: 0.8em; opacity: 0;
+            transition: opacity 0.3s; pointer-events: none;
+        }
+
+        input, select, button { font-family: 'Inter', sans-serif; }
+        input, select {
+            width: 100%; padding: 14px; border: 1px solid var(--light-border); border-radius: 10px; font-size: 1em;
+            background-color: var(--light-surface); color: var(--light-text); margin-bottom: 15px;
+        }
+        .calculator-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .calculator-grid button, .matrix-ops button, .generic-button {
+            font-size: 1.4em; padding: 22px; border-radius: 14px; border: none; cursor: pointer;
+            transition: all 0.2s; background-color: var(--light-surface); color: var(--light-text);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .calculator-grid button:hover, .matrix-ops button:hover, .generic-button:hover { transform: translateY(-3px); box-shadow: 0 5px 10px rgba(0,0,0,0.1); }
+        .calculator-grid button:active, .matrix-ops button:active, .generic-button:active { transform: scale(0.95); }
+        .btn-operator { color: var(--primary-color); font-weight: 600; }
+        .btn-special { color: var(--warning-color); font-weight: 600; }
+        .btn-equal { background-color: var(--success-color); color: white; grid-column: span 2; font-weight: 700; }
+        .graph-container { position: relative; }
+        #graph-canvas, #graph-canvas-3d { width: 100%; height: 450px; border: 1px solid var(--light-border); border-radius: 12px; cursor: grab; }
+        #graph-canvas:active, #graph-canvas-3d:active { cursor: grabbing; }
+        #graph-coords { position: absolute; top: 10px; left: 10px; background: var(--light-surface); padding: 5px 10px; border-radius: 8px; font-size: 0.9em; pointer-events: none; }
+        .matrix-container, .physics-module, .algebra-module, .finance-module { margin-bottom: 25px; }
+        .matrix-controls, .physics-inputs, .line-eq-grid { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+        .matrix-controls label, .physics-inputs label { font-weight: 500; }
+        .matrix-controls input, .physics-inputs input { width: 65px; margin-bottom: 0; }
+        .matrix-grid { display: grid; gap: 6px; margin-top: 12px; }
+        .matrix-input { text-align: center; padding: 10px; font-size: 1em; }
+        .matrix-ops { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
+        .matrix-ops button { padding: 14px; font-size: 1em; }
+        .converter-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; }
+        .converter-grid span { text-align: center; font-size: 1.8em; font-weight: 600; }
+        #history-list li { padding: 14px; border-bottom: 1px solid var(--light-border); cursor: pointer; transition: background-color 0.2s; border-radius: 10px; margin-bottom: 6px; }
+        #history-list li:hover { background-color: rgba(66, 153, 225, 0.1); }
+        @media (max-width: 1100px) { .main-container { flex-direction: column; } .calculator-wrapper, .history-container { max-width: 100%; } }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+</head>
+<body>
+    <div class="aurora-bg"> <div class="aurora-1"></div> <div class="aurora-2"></div> <div class="aurora-3"></div> </div>
+    <div class="main-container">
+        <div class="calculator-wrapper">
+            <div class="calculator-container">
+                <div class="header"><h1>Calculadora Betinha</h1><button id="theme-toggle">✨</button></div>
+                <div class="tabs">
+                    <button class="tab-button active" onclick="openTab(event, 'cientifica')">Científica</button>
+                    <button class="tab-button" onclick="openTab(event, 'graficos')">Gráficos</button>
+                    <button class="tab-button" onclick="openTab(event, 'matrizes')">Matrizes</button>
+                    <button class="tab-button" onclick="openTab(event, 'algebra')">Álgebra</button>
+                    <button class="tab-button" onclick="openTab(event, 'fisica')">Física</button>
+                    <button class="tab-button" onclick="openTab(event, 'financas')">Finanças</button>
+                    <button class="tab-button" onclick="openTab(event, 'conversores')">Conversores</button>
+                </div>
+                <div id="cientifica" class="tab-content active">
+                    <div id="result-output-container">
+                        <div id="result-output" class="result-box">0</div>
+                        <button id="copy-result" title="Copiar resultado">📋</button>
+                        <div id="copy-tooltip" class="tooltip">Copiado!</div>
+                    </div>
+                    <input type="text" id="expression" placeholder="Ex: derivative('x^3', 'x')">
+                    <div class="calculator-grid">
+                        <button onclick="appendToExpression('sin(')" class="btn-special">sin</button><button onclick="appendToExpression('cos(')" class="btn-special">cos</button><button onclick="appendToExpression('tan(')" class="btn-special">tan</button><button onclick="appendToExpression('log(')" class="btn-special">log</button>
+                        <button onclick="appendToExpression('sqrt(')" class="btn-special">√</button><button onclick="appendToExpression('^')" class="btn-special">xʸ</button><button onclick="appendToExpression('pi')" class="btn-special">π</button><button onclick="appendToExpression('e')" class="btn-special">e</button>
+                        <button onclick="appendToExpression('simplify(')" class="btn-special" style="font-size: 1.1em;">simpl</button><button onclick="appendToExpression('derivative(')" class="btn-special" style="font-size: 1.1em;">deriv</button><button onclick="appendToExpression('factor(')" class="btn-special" style="font-size: 1.1em;">factor</button><button onclick="deleteLast()" class="btn-operator">DEL</button>
+                        <button onclick="appendToExpression('7')">7</button><button onclick="appendToExpression('8')">8</button><button onclick="appendToExpression('9')">9</button><button onclick="appendToExpression('/')" class="btn-operator">÷</button>
+                        <button onclick="appendToExpression('4')">4</button><button onclick="appendToExpression('5')">5</button><button onclick="appendToExpression('6')">6</button><button onclick="appendToExpression('*')" class="btn-operator">×</button>
+                        <button onclick="appendToExpression('1')">1</button><button onclick="appendToExpression('2')">2</button><button onclick="appendToExpression('3')">3</button><button onclick="appendToExpression('-')" class="btn-operator">−</button>
+                        <button onclick="appendToExpression('0')">0</button><button onclick="appendToExpression('.')">.</button><button onclick="solveExpression()" class="btn-equal">=</button><button onclick="appendToExpression('+')" class="btn-operator">+</button>
+                    </div>
+                </div>
+                <div id="graficos" class="tab-content">
+                    <h2>Gráficos 2D & 3D Interativos</h2>
+                    <div class="generic-button" style="display:flex; justify-content:space-around; margin-bottom:15px;"><label><input type="radio" name="graph-mode" value="2d" checked> 2D</label><label><input type="radio" name="graph-mode" value="3d"> 3D</label></div>
+                    <div id="input-2d"><input type="text" id="function-input-2d" placeholder="2D: x^2, sin(x)"></div>
+                    <div id="input-3d" style="display:none;"><input type="text" id="function-input-3d" placeholder="3D: sin(x)*cos(y)"></div>
+                    <button class="generic-button" onclick="drawGraph()">Desenhar Gráfico</button>
+                    <div class="graph-container">
+                        <canvas id="graph-canvas" width="600" height="450"></canvas>
+                        <div id="graph-canvas-3d-container" style="display:none;"><canvas id="graph-canvas-3d"></canvas></div>
+                        <div id="graph-coords" style="display:none;"></div>
+                    </div>
+                </div>
+                <div id="matrizes" class="tab-content">
+                    <h2>Motor de Matrizes</h2><div id="matrix-result-output" class="result-box" style="font-size: 1.2em; min-height: 120px;">Resultado da Matriz</div>
+                    <div class="matrix-container"><h3>Matriz A</h3><div class="matrix-controls"><label>Linhas:</label><input type="number" id="matrix-a-rows" value="2" min="1" oninput="createMatrixInputs('a')"><label>Colunas:</label><input type="number" id="matrix-a-cols" value="2" min="1" oninput="createMatrixInputs('a')"><button class="generic-button" style="padding: 8px 12px; font-size: 0.9em;" onclick="fillRandomMatrix('a')">Aleatório</button><button class="generic-button" style="padding: 8px 12px; font-size: 0.9em;" onclick="generateSpecialMatrix('a', 'identity')">Identidade</button><button class="generic-button" style="padding: 8px 12px; font-size: 0.9em;" onclick="generateSpecialMatrix('a', 'zeros')">Nula</button></div><div id="matrix-a-grid" class="matrix-grid"></div></div>
+                    <div class="matrix-container"><h3>Matriz B</h3><div class="matrix-controls"><label>Linhas:</label><input type="number" id="matrix-b-rows" value="2" min="1" oninput="createMatrixInputs('b')"><label>Colunas:</label><input type="number" id="matrix-b-cols" value="2" min="1" oninput="createMatrixInputs('b')"><button class="generic-button" style="padding: 8px 12px; font-size: 0.9em;" onclick="fillRandomMatrix('b')">Aleatório</button></div><div id="matrix-b-grid" class="matrix-grid"></div></div>
+                    <div class="matrix-ops"><button onclick="matrixOp('add')">A + B</button><button onclick="matrixOp('subtract')">A - B</button><button onclick="matrixOp('multiply')">A * B</button><button onclick="matrixOp('det')">det(A)</button><button onclick="matrixOp('inv')">inv(A)</button><button onclick="matrixOp('transpose')">transp(A)</button><button onclick="matrixOp('eigs')">Autovalores(A)</button><button onclick="matrixOp('trace')">Traço(A)</button><button onclick="matrixOp('rank')">Posto(A)</button></div>
+                </div>
+                <div id="algebra" class="tab-content">
+                     <h2>Álgebra Linear</h2><div id="algebra-result-output" class="result-box" style="font-size: 1.2em;">Resultado Algébrico</div>
+                     <div class="algebra-module"><h3>Equação da Reta (2 Pontos)</h3><div class="line-eq-grid" style="grid-template-columns: 1fr 1fr; gap: 10px;"><div><label>Ponto A (x, y)</label><div style="display:flex; gap: 5px;"><input type="number" id="pontoAx" placeholder="x1"><input type="number" id="pontoAy" placeholder="y1"></div></div><div><label>Ponto B (x, y)</label><div style="display:flex; gap: 5px;"><input type="number" id="pontoBx" placeholder="x2"><input type="number" id="pontoBy" placeholder="y2"></div></div></div><button class="generic-button" onclick="solveLineEquation()">Calcular Equação</button></div>
+                     <div class="algebra-module"><h3>Solucionador de Sistema Linear (3x3)</h3><div id="system-3x3-inputs"></div><button class="generic-button" onclick="solve3x3System()">Resolver Sistema</button></div>
+                </div>
+                <div id="fisica" class="tab-content">
+                    <h2>Calculadora de Física</h2><div id="physics-result-output" class="result-box" style="font-size: 1.2em;">Resultado de Física</div>
+                    <div class="physics-module"><h3>Eletricidade e Circuitos</h3>
+                        <div class="physics-sub-module"><h4>Lei de Ohm</h4><div class="physics-inputs"><label>V(volt):</label><input type="number" id="ohm_v" placeholder="Tensão"><label>I(ampere):</label><input type="number" id="ohm_i" placeholder="Corrente"><label>R(ohm):</label><input type="number" id="ohm_r" placeholder="Resistência"></div><button class="generic-button" onclick="calculatePhysics('ohm')">Calcular</button></div>
+                        <div class="physics-sub-module"><h4>Resistores em Série</h4><div class="physics-inputs" style="flex-direction: column; align-items: start;"><label>Resistências (Ω), separadas por vírgula:</label><input type="text" id="series_r" placeholder="Ex: 10, 20, 30" style="width: 100%;"></div><button class="generic-button" onclick="calculatePhysics('series_r')">Calcular Req</button></div>
+                        <div class="physics-sub-module"><h4>Resistores em Paralelo</h4><div class="physics-inputs" style="flex-direction: column; align-items: start;"><label>Resistências (Ω), separadas por vírgula:</label><input type="text" id="parallel_r" placeholder="Ex: 10, 20, 30" style="width: 100%;"></div><button class="generic-button" onclick="calculatePhysics('parallel_r')">Calcular Req</button></div>
+                    </div>
+                    <div class="physics-module"><h3>Cinemática</h3><div class="physics-inputs"><label>S₀(m):</label><input type="number" id="mru_s0" placeholder="Pos. Inicial"><label>v(m/s):</label><input type="number" id="mru_v" placeholder="Velocidade"><label>t(s):</label><input type="number" id="mru_t" placeholder="Tempo"></div><button class="generic-button" onclick="calculatePhysics('mru')">Calcular Posição Final (MRU)</button></div>
+                    <div class="physics-module"><h3>Dinâmica</h3><div class="physics-inputs"><label>m(kg):</label><input type="number" id="newton_m" placeholder="Massa"><label>a(m/s²):</label><input type="number" id="newton_a" placeholder="Aceleração"></div><button class="generic-button" onclick="calculatePhysics('newton')">Calcular Força (N)</button></div>
+                </div>
+                <div id="financas" class="tab-content">
+                    <h2>Calculadora Financeira</h2><div id="finance-result-output" class="result-box" style="font-size: 1.2em;">Resultado Financeiro</div>
+                    <div class="finance-module"><h3>Juros Simples</h3><div class="physics-inputs"><label>Principal (R$):</label><input type="number" id="js_p"><label>Taxa (% a.m.):</label><input type="number" id="js_i"><label>Tempo (meses):</label><input type="number" id="js_t"></div><button class="generic-button" onclick="calculateFinance('js')">Calcular Montante</button></div>
+                    <div class="finance-module"><h3>Juros Compostos</h3><div class="physics-inputs"><label>Principal (R$):</label><input type="number" id="jc_p"><label>Taxa (% a.m.):</label><input type="number" id="jc_i"><label>Tempo (meses):</label><input type="number" id="jc_t"></div><button class="generic-button" onclick="calculateFinance('jc')">Calcular Montante</button></div>
+                </div>
+                <div id="conversores" class="tab-content">
+                    <h2>Conversor de Unidades</h2><select id="unit-category" onchange="updateUnitOptions()"></select>
+                    <div class="converter-grid"><input type="number" id="from-value" value="1" oninput="convertUnits()"><select id="from-unit" onchange="convertUnits()"></select><span>⇄</span><div><input type="text" id="to-value" readonly><select id="to-unit" onchange="convertUnits()"></select></div></div>
+                </div>
+            </div>
+        </div>
+        <div class="history-container"><h2>Histórico</h2><ul id="history-list"></ul></div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const synth = new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 } }).toDestination();
+            const clickSound = () => { if (Tone.context.state !== 'running') { Tone.context.resume(); } synth.triggerAttackRelease("C5", "8n"); };
+            document.querySelectorAll('button').forEach(button => button.addEventListener('click', clickSound));
+            
+            const expressionInput = document.getElementById('expression');
+            const resultDisplay = document.getElementById('result-output');
+            const matrixResultDisplay = document.getElementById('matrix-result-output');
+            const algebraResultDisplay = document.getElementById('algebra-result-output');
+            const physicsResultDisplay = document.getElementById('physics-result-output');
+            const financeResultDisplay = document.getElementById('finance-result-output');
+            const historyList = document.getElementById('history-list');
+            const themeToggle = document.getElementById('theme-toggle');
+            const copyBtn = document.getElementById('copy-result');
+            const copyTooltip = document.getElementById('copy-tooltip');
+            let history = JSON.parse(localStorage.getItem('calcHistory')) || [];
+
+            const displayResult = (content, isError = false, target = resultDisplay) => {
+                const formattedContent = isError ? `<span style="color:var(--danger-color); font-size: 0.8em;">${content}</span>` : content;
+                target.innerHTML = formattedContent;
+            };
+
+            const solveExpression = () => {
+                const expression = expressionInput.value;
+                if (!expression) return;
+                try {
+                    let resultNode = math.parse(expression);
+                    let simplified = math.simplify(resultNode);
+                    let result = simplified.toString();
+                    if (!isNaN(parseFloat(simplified.evaluate()))) {
+                        result = math.format(simplified.evaluate(), { notation: 'fixed', precision: 8 }).replace(/\.?0+$/, '') || '0';
+                    }
+                    displayResult(result);
+                    addToHistory(expression, result);
+                } catch (error) { displayResult('Nunca sobra nada pro betinha', true); }
+            };
+
+            const addToHistory = (expression, result) => {
+                history.unshift({ expression, result });
+                if (history.length > 50) history.pop();
+                localStorage.setItem('calcHistory', JSON.stringify(history));
+                renderHistory();
+            };
+
+            const renderHistory = () => {
+                historyList.innerHTML = history.length ? '' : '<li>Nenhum cálculo recente.</li>';
+                history.forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span class="hist-expr" style="color: var(--light-text-secondary); display: block; margin-bottom: 4px;">${item.expression}</span><span class="hist-result" style="font-weight: 600; font-size: 1.1em;">${item.result}</span>`;
+                    li.onclick = () => { openTab(null, 'cientifica'); expressionInput.value = item.expression; displayResult(item.result); };
+                    historyList.appendChild(li);
+                });
+            };
+
+            window.appendToExpression = (value) => { expressionInput.value += value; expressionInput.focus(); };
+            window.clearExpression = () => { expressionInput.value = ''; displayResult('0'); };
+            window.deleteLast = () => { expressionInput.value = expressionInput.value.slice(0, -1); };
+            window.solveExpression = solveExpression;
+            expressionInput.addEventListener('keydown', (e) => e.key === 'Enter' && (e.preventDefault(), solveExpression()));
+
+            const applyTheme = (theme) => { document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('theme', theme); };
+            themeToggle.addEventListener('click', () => applyTheme(localStorage.getItem('theme') === 'light' ? 'dark' : 'light'));
+            applyTheme(localStorage.getItem('theme') || 'light');
+
+            window.openTab = (evt, tabName) => {
+                document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                document.getElementById(tabName).classList.add('active');
+                const clickedButton = evt ? evt.currentTarget : document.querySelector(`.tab-button[onclick*="'${tabName}'"]`);
+                if (clickedButton) clickedButton.classList.add('active');
+            };
+
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(resultDisplay.textContent).then(() => {
+                    copyTooltip.style.opacity = 1;
+                    setTimeout(() => { copyTooltip.style.opacity = 0; }, 1500);
+                });
+            });
+
+            const canvas = document.getElementById('graph-canvas');
+            const ctx = canvas.getContext('2d');
+            let pan = { x: 0, y: 0 }; let zoom = 1.0; let isPanning = false; let lastPos = { x: 0, y: 0 };
+            const coordsDisplay = document.getElementById('graph-coords');
+            canvas.onmousedown = (e) => { isPanning = true; lastPos = { x: e.clientX, y: e.clientY }; };
+            canvas.onmouseup = () => { isPanning = false; };
+            canvas.onmouseleave = () => { isPanning = false; coordsDisplay.style.display = 'none';};
+            canvas.onmousemove = (e) => { 
+                const rect = canvas.getBoundingClientRect(); const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
+                const scale = 40 * zoom; const origin = { x: canvas.width / 2 + pan.x, y: canvas.height / 2 + pan.y };
+                const graphX = (mouseX - origin.x) / scale; const graphY = (origin.y - mouseY) / scale;
+                coordsDisplay.textContent = `x: ${graphX.toFixed(2)}, y: ${graphY.toFixed(2)}`; coordsDisplay.style.display = 'block';
+                if (isPanning) { const dx = e.clientX - lastPos.x; const dy = e.clientY - lastPos.y; pan.x += dx; pan.y += dy; lastPos = { x: e.clientX, y: e.clientY }; drawGraph2D(); } 
+            };
+            canvas.onwheel = (e) => { e.preventDefault(); zoom *= e.deltaY < 0 ? 1.1 : 0.9; drawGraph2D(); };
+            
+            function drawGraph2D() {
+                const functions = document.getElementById('function-input-2d').value.split(',').map(f => f.trim());
+                const width = canvas.width, height = canvas.height; const scale = 40 * zoom;
+                ctx.clearRect(0, 0, width, height); const origin = { x: width / 2 + pan.x, y: height / 2 + pan.y };
+                ctx.beginPath(); ctx.moveTo(0, origin.y); ctx.lineTo(width, origin.y); ctx.moveTo(origin.x, 0); ctx.lineTo(origin.x, height);
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--light-border'); ctx.stroke();
+                const colors = ['#4299e1', '#f56565', '#48bb78', '#ed8936'];
+                functions.forEach((funcStr, index) => { if (!funcStr) return; try { const compiled = math.compile(funcStr); ctx.beginPath(); ctx.strokeStyle = colors[index % colors.length]; ctx.lineWidth = 2.5; for (let px = 0; px < width; px++) { const x = (px - origin.x) / scale; const y = compiled.evaluate({ x: x }); const py = origin.y - y * scale; if (px === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); } ctx.stroke(); } catch (e) { console.error(e); } });
+            };
+
+            let scene, camera, renderer, mesh;
+            const graph3DContainer = document.getElementById('graph-canvas-3d-container');
+            function init3D() {
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, graph3DContainer.clientWidth / 450, 0.1, 1000);
+                renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('graph-canvas-3d'), alpha: true, antialias: true });
+                renderer.setSize(graph3DContainer.clientWidth, 450);
+                camera.position.set(10, 10, 15); camera.lookAt(0,0,0);
+                let isDragging = false, previousMousePosition = { x: 0, y: 0 };
+                renderer.domElement.onmousedown = (e) => { isDragging = true; };
+                renderer.domElement.onmouseup = () => { isDragging = false; };
+                renderer.domElement.onmousemove = (e) => {
+                    if (isDragging && mesh) {
+                        const deltaMove = { x: e.offsetX - previousMousePosition.x, y: e.offsetY - previousMousePosition.y };
+                        mesh.rotation.y += deltaMove.x * 0.01; mesh.rotation.x += deltaMove.y * 0.01;
+                    }
+                    previousMousePosition = { x: e.offsetX, y: e.offsetY };
+                };
+                renderer.domElement.onwheel = (e) => { e.preventDefault(); camera.position.z += e.deltaY * 0.01; };
+                function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
+                animate();
+            }
+            function plot3D(funcStr) {
+                if (mesh) scene.remove(mesh);
+                if (!funcStr) return;
+                try {
+                    const compiled = math.compile(funcStr);
+                    const geometry = new THREE.PlaneGeometry(20, 20, 50, 50);
+                    const material = new THREE.MeshPhongMaterial({ color: 0x4299e1, side: THREE.DoubleSide, wireframe: false });
+                    const vertices = geometry.attributes.position.array;
+                    for (let i = 0; i < vertices.length; i += 3) {
+                        const x = vertices[i]; const y = vertices[i+1];
+                        vertices[i+2] = compiled.evaluate({x: x, y: y});
+                    }
+                    geometry.attributes.position.needsUpdate = true; geometry.computeVertexNormals();
+                    mesh = new THREE.Mesh(geometry, material); scene.add(mesh);
+                    if (!scene.getObjectByName("light")) {
+                        const light = new THREE.DirectionalLight(0xffffff, 1);
+                        light.position.set(0, 1, 1); light.name = "light"; scene.add(light);
+                    }
+                } catch (e) { console.error("Erro ao plotar 3D:", e); }
+            }
+            document.querySelectorAll('input[name="graph-mode"]').forEach(radio => {
+                radio.onchange = () => {
+                    const is2D = radio.value === '2d';
+                    document.getElementById('input-2d').style.display = is2D ? 'block' : 'none';
+                    document.getElementById('graph-canvas').style.display = is2D ? 'block' : 'none';
+                    document.getElementById('input-3d').style.display = !is2D ? 'block' : 'none';
+                    document.getElementById('graph-canvas-3d-container').style.display = !is2D ? 'block' : 'none';
+                    if (!is2D && !renderer) init3D();
+                };
+            });
+            window.drawGraph = () => {
+                const mode = document.querySelector('input[name="graph-mode"]:checked').value;
+                if (mode === '2d') { drawGraph2D(); } else { plot3D(document.getElementById('function-input-3d').value); }
+            };
+            
+            window.createMatrixInputs = (matrix) => {
+                const rows = parseInt(document.getElementById(`matrix-${matrix}-rows`).value);
+                const cols = parseInt(document.getElementById(`matrix-${matrix}-cols`).value);
+                const grid = document.getElementById(`matrix-${matrix}-grid`);
+                grid.innerHTML = '';
+                grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+                for (let i = 0; i < rows * cols; i++) { grid.innerHTML += `<input type="number" class="matrix-input" placeholder="0">`; }
+            };
+            const getMatrixValues = (matrix) => {
+                const rows = parseInt(document.getElementById(`matrix-${matrix}-rows`).value);
+                const cols = parseInt(document.getElementById(`matrix-${matrix}-cols`).value);
+                const inputs = document.querySelectorAll(`#matrix-${matrix}-grid .matrix-input`);
+                const arr = [];
+                for (let i = 0; i < rows; i++) { const row = []; for (let j = 0; j < cols; j++) { row.push(parseFloat(inputs[i * cols + j].value) || 0); } arr.push(row); }
+                return arr;
+            };
+            window.fillRandomMatrix = (matrix) => {
+                const inputs = document.querySelectorAll(`#matrix-${matrix}-grid .matrix-input`);
+                inputs.forEach(input => input.value = Math.floor(Math.random() * 10));
+            };
+            window.generateSpecialMatrix = (matrix, type) => {
+                const rows = parseInt(document.getElementById(`matrix-${matrix}-rows`).value);
+                const cols = parseInt(document.getElementById(`matrix-${matrix}-cols`).value);
+                const inputs = document.querySelectorAll(`#matrix-${matrix}-grid .matrix-input`);
+                for (let i = 0; i < rows; i++) { for (let j = 0; j < cols; j++) { let value = 0; if (type === 'identity' && i === j) value = 1; inputs[i * cols + j].value = value; } }
+            };
+            window.matrixOp = (op) => {
+                try {
+                    const matrixA = math.matrix(getMatrixValues('a'));
+                    let result;
+                    if (['add', 'subtract', 'multiply'].includes(op)) {
+                        const matrixB = math.matrix(getMatrixValues('b'));
+                        result = math[op](matrixA, matrixB);
+                    } else if (op === 'eigs') {
+                        const eigs = math.eigs(matrixA);
+                        result = `Autovalores: [${eigs.values.map(v => math.format(v, 2)).join(', ')}]`;
+                    } else {
+                        result = math[op](matrixA);
+                    }
+                    const formattedResult = typeof result === 'string' ? result : `<pre>${math.format(result, {notation: 'fixed', precision: 2})}</pre>`;
+                    displayResult(formattedResult, false, matrixResultDisplay);
+                } catch(e) { displayResult(e.message, true, matrixResultDisplay); }
+            };
+
+            window.solveLineEquation = () => {
+                try {
+                    const ax = parseFloat(document.getElementById('pontoAx').value); const ay = parseFloat(document.getElementById('pontoAy').value);
+                    const bx = parseFloat(document.getElementById('pontoBx').value); const by = parseFloat(document.getElementById('pontoBy').value);
+                    if ([ax, ay, bx, by].some(isNaN)) { displayResult('Preencha todas as coordenadas.', true, algebraResultDisplay); return; }
+                    if (ax === bx) { displayResult(`Reta vertical: x = ${ax}`, false, algebraResultDisplay); return; }
+                    if (ay === by) { displayResult(`Reta horizontal: y = ${ay}`, false, algebraResultDisplay); return; }
+                    const m = (by - ay) / (bx - ax); const c = ay - m * ax;
+                    let equation = `y = ${m.toFixed(2).replace('.00', '')}x`;
+                    if (c > 0) equation += ` + ${c.toFixed(2).replace('.00', '')}`; else if (c < 0) equation += ` - ${Math.abs(c).toFixed(2).replace('.00', '')}`;
+                    displayResult(`<b>Equação: ${equation}</b><br><small>Coeficiente Angular (m): ${m.toFixed(2)}</small>`, false, algebraResultDisplay);
+                } catch (e) { displayResult(e.message, true, algebraResultDisplay); }
+            };
+            window.solve3x3System = () => {
+                try {
+                    const a = [], b = [];
+                    for(let i=1; i<=3; i++) {
+                        const row = [
+                            parseFloat(document.getElementById(`eq${i}-x`).value),
+                            parseFloat(document.getElementById(`eq${i}-y`).value),
+                            parseFloat(document.getElementById(`eq${i}-z`).value)
+                        ];
+                        if (row.some(isNaN)) throw new Error("Preencha todos os coeficientes.");
+                        a.push(row);
+                        const constVal = parseFloat(document.getElementById(`eq${i}-c`).value);
+                        if (isNaN(constVal)) throw new Error("Preencha todos os termos independentes.");
+                        b.push(constVal);
+                    }
+                    const solution = math.lusolve(a, b);
+                    displayResult(`<b>Solução:</b><br>x = ${math.format(solution[0], 2)}<br>y = ${math.format(solution[1], 2)}<br>z = ${math.format(solution[2], 2)}`, false, algebraResultDisplay);
+                } catch(e) { displayResult(e.message, true, algebraResultDisplay); }
+            };
+            
+            window.calculatePhysics = (type) => {
+                try {
+                    let result, formula;
+                    if (type === 'mru') {
+                        const s0 = parseFloat(document.getElementById('mru_s0').value) || 0; const v = parseFloat(document.getElementById('mru_v').value) || 0; const t = parseFloat(document.getElementById('mru_t').value) || 0;
+                        result = s0 + v * t; formula = `S = ${s0} + ${v} * ${t} = ${result.toFixed(2)} m`;
+                    } else if (type === 'newton') {
+                        const m = parseFloat(document.getElementById('newton_m').value) || 0; const a = parseFloat(document.getElementById('newton_a').value) || 0;
+                        result = m * a; formula = `F = ${m} * ${a} = ${result.toFixed(2)} N`;
+                    } else if (type === 'ke') {
+                        const m = parseFloat(document.getElementById('ke_m').value) || 0; const v = parseFloat(document.getElementById('ke_v').value) || 0;
+                        result = 0.5 * m * Math.pow(v, 2); formula = `Ec = 0.5 * ${m} * ${v}² = ${result.toFixed(2)} J`;
+                    } else if (type === 'ohm') {
+                        const v = document.getElementById('ohm_v').value; const i = document.getElementById('ohm_i').value; const r = document.getElementById('ohm_r').value;
+                        if (v && i && !r) formula = `R = ${v} / ${i} = ${(v/i).toFixed(2)} Ω`;
+                        else if (v && r && !i) formula = `I = ${v} / ${r} = ${(v/r).toFixed(2)} A`;
+                        else if (i && r && !v) formula = `V = ${i} * ${r} = ${(i*r).toFixed(2)} V`;
+                        else { throw new Error("Preencha exatamente 2 dos 3 campos."); }
+                    } else if (type === 'series_r') {
+                        const resistances = document.getElementById('series_r').value.split(',').map(r => parseFloat(r.trim())).filter(r => !isNaN(r) && r > 0);
+                        if (resistances.length < 2) throw new Error("Insira pelo menos 2 resistências.");
+                        result = resistances.reduce((acc, r) => acc + r, 0);
+                        formula = `Req = ${resistances.join(' + ')} = ${result.toFixed(2)} Ω`;
+                    } else if (type === 'parallel_r') {
+                        const resistances = document.getElementById('parallel_r').value.split(',').map(r => parseFloat(r.trim())).filter(r => !isNaN(r) && r > 0);
+                        if (resistances.length < 2) throw new Error("Insira pelo menos 2 resistências.");
+                        const sumOfInverses = resistances.reduce((acc, r) => acc + (1 / r), 0);
+                        result = 1 / sumOfInverses;
+                        formula = `Req = (1 / (${resistances.map(r => `1/${r}`).join(' + ')}))⁻¹ = ${result.toFixed(2)} Ω`;
+                    }
+                    displayResult(formula, false, physicsResultDisplay);
+                } catch (e) { displayResult(e.message, true, physicsResultDisplay); }
+            };
+            
+            window.calculateFinance = (type) => {
+                try {
+                    let p, i, t, result, formula;
+                    if (type === 'js') {
+                        p = parseFloat(document.getElementById('js_p').value) || 0; i = (parseFloat(document.getElementById('js_i').value) || 0) / 100; t = parseFloat(document.getElementById('js_t').value) || 0;
+                        result = p * (1 + i * t); formula = `Montante = ${p} * (1 + ${i} * ${t}) = R$ ${result.toFixed(2)}`;
+                    } else if (type === 'jc') {
+                        p = parseFloat(document.getElementById('jc_p').value) || 0; i = (parseFloat(document.getElementById('jc_i').value) || 0) / 100; t = parseFloat(document.getElementById('jc_t').value) || 0;
+                        result = p * Math.pow((1 + i), t); formula = `Montante = ${p} * (1 + ${i})^${t} = R$ ${result.toFixed(2)}`;
+                    }
+                    displayResult(formula, false, financeResultDisplay);
+                } catch(e) { displayResult(e.message, true, financeResultDisplay); }
+            };
+
+            const units = {
+                Comprimento: { metro: 1, quilometro: 1000, milha: 1609.34, pé: 0.3048 }, Massa: { grama: 1, quilograma: 1000, libra: 453.592, onça: 28.3495 },
+                Temperatura: { Celsius: 'c', Fahrenheit: 'f', Kelvin: 'k' }, Velocidade: { 'm/s': 1, 'km/h': 0.277778, 'mph': 0.44704 },
+                Dados: { byte: 1, kilobyte: 1024, megabyte: 1048576, gigabyte: 1073741824 }, Tempo: { segundo: 1, minuto: 60, hora: 3600, dia: 86400 }
+            };
+            const categorySelect = document.getElementById('unit-category'); const fromUnitSelect = document.getElementById('from-unit');
+            const toUnitSelect = document.getElementById('to-unit'); const fromValueInput = document.getElementById('from-value'); const toValueInput = document.getElementById('to-value');
+            window.updateUnitOptions = () => {
+                const category = categorySelect.value; const unitOptions = Object.keys(units[category]);
+                fromUnitSelect.innerHTML = toUnitSelect.innerHTML = unitOptions.map(u => `<option value="${u}">${u}</option>`).join(''); convertUnits();
+            };
+            window.convertUnits = () => {
+                const category = categorySelect.value; const fromUnit = fromUnitSelect.value; const toUnit = toUnitSelect.value;
+                const fromValue = parseFloat(fromValueInput.value); if (isNaN(fromValue)) { toValueInput.value = ''; return; }
+                let result;
+                if (category === 'Temperatura') {
+                    let tempC; if (fromUnit === 'Celsius') tempC = fromValue; if (fromUnit === 'Fahrenheit') tempC = (fromValue - 32) * 5/9; if (fromUnit === 'Kelvin') tempC = fromValue - 273.15;
+                    if (toUnit === 'Celsius') result = tempC; if (toUnit === 'Fahrenheit') result = (tempC * 9/5) + 32; if (toUnit === 'Kelvin') result = tempC + 273.15;
+                } else { result = fromValue * units[category][fromUnit] / units[category][toUnit]; }
+                toValueInput.value = result.toLocaleString('pt-BR', {maximumFractionDigits: 4});
+            };
+            
+            function create3x3SystemInputs() {
+                const container = document.getElementById('system-3x3-inputs');
+                let html = '';
+                for(let i=1; i<=3; i++) {
+                    html += `<div class="line-eq-grid" style="grid-template-columns: 1fr; gap: 10px;"><div>
+                        <input type="number" id="eq${i}-x" placeholder="a${i}" style="width:60px">x + 
+                        <input type="number" id="eq${i}-y" placeholder="b${i}" style="width:60px">y +
+                        <input type="number" id="eq${i}-z" placeholder="c${i}" style="width:60px">z = 
+                        <input type="number" id="eq${i}-c" placeholder="d${i}" style="width:60px">
+                    </div></div>`;
+                }
+                container.innerHTML = html;
+            }
+
+            renderHistory(); drawGraph(); createMatrixInputs('a'); createMatrixInputs('b');
+            categorySelect.innerHTML = Object.keys(units).map(c => `<option>${c}</option>`).join(''); updateUnitOptions();
+            create3x3SystemInputs();
+        });
+    </script>
+</body>
+</html>
